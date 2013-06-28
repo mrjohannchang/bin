@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+which repo | grep repo 2>&1 1>/dev/null
+
+if [ $? != 0 ]; then
+    echo 'Cannot locate the command "repo"'
+    exit 1
+fi
+
+repo forall -c "git branch -a | grep \"$1\" 2>&1 1>/dev/null && pwd; git branch -a | grep \"$1\""
