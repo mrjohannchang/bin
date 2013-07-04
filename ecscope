@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+
+curdir="`pwd`"
+cscopefile="cscope.files"
+ceol=`tput el`
+p=0
+
+progress_sign=( \
+    "" \
+    "." \
+    ".." \
+    "..." \
+)
+
+num_signs=$((${#progress_sign[@]} - 1))
+
+progressing() {
+    echo -en "\r${ceol}"
+    echo -n "${current_stage}"
+    echo -n "${progress_sign[p]}"
+
+    if (( p++ )) && [[ $p = ${#progress_sign[@]} ]]; then
+        p=0
+    fi
+}
+
+progressed() {
+    echo -en "\r${ceol}"
+    echo -n "${current_stage}"
+    echo -n "${progress_sign[$num_signs]}"
+    echo "done."
+
+    p=0
+}
+
+progress() {
+    $1
+
+    while true; do
+        kill -0 $pid 2>/dev/null
+        if [[ $? = "0" ]]; then
+            progressing
+            sleep 0.5
+        else
+            progressed
+            wait $pid
+            break
+        fi
+    done
+}
+
+del_vestige() {
+    current_stage="Removing vestige"
+
+    rm cscope.* 2>/dev/null &
+
+    pid=$!
+}
+
+gather_files() {
+    current_stage="Gathering files"
+
+    find "$curdir" \
+        -type d -name '.git' -prune -o \
+        -type d -name '.repo' -prune -o \
+        -type d -name '.svn' -prune -o \
+        -type d -path "$curdir/out" -prune -o \
+        -type d -path "$curdir/prebuilt" -prune -o \
+        -type f -iname '*.aidl' -print -o \
+        -type f -iname '*.[ch]' -print -o \
+        -type f -iname '*.[ch]pp' -print -o \
+        -type f -iname '*.cc' -print -o \
+        -type f -iname '*.java' -print -o \
+        -type f -iname '*.mk' -print -o \
+        -type f -iname '*.py' -print -o \
+        -type f -iname '*.xml' -print \
+        > "$cscopefile" 2>/dev/null &
+
+    pid=$!
+}
+
+create_cscope_database() {
+    current_stage="Creating database"
+
+    cscope -bkq 2>/dev/null &
+
+    pid=$!
+}
+
+progress del_vestige
+progress gather_files
+progress create_cscope_database
+
+echo "Job finished."
