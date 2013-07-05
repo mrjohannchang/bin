@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ $# = 1 ]; then
+    string=$1
+else
+    read -r string
+fi
+
+echo $string | sed 's/\\/\//g'
