@@ -1,0 +1,163 @@
+#!/usr/bin/python3
+# -*- coding: utf8 -*-
+
+import argparse
+import os
+import signal
+import subprocess
+import sys
+import textwrap
+
+__author__  = 'Chang, Yu-Heng (張昱珩)'
+__email__   = 'mr.changyuheng@gmail.com'
+__version__ = (1, 0, 0)
+
+PARTITION_BOOT     = 'boot'
+PARTITION_RECOVERY = 'recovery'
+PARTITION_SYSTEM   = 'system'
+PARTITION_USERDATA = 'userdata'
+
+spawned_job = None
+
+def signal_handler(signal, frame):
+    if spawned_job != None:
+        try:
+            spawned_job.terminate()
+        except OSError:
+            pass
+    print('\nUser interrupted.')
+    exit(1)
+
+def get_arguments():
+    parser = argparse.ArgumentParser(
+            description='To flash Android image in a more convenient way',
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog=textwrap.dedent('''
+example:
+1. To flash boot.img and system.img from current working directory:
+    {program} -bs
+2. To flash boot.img and system.img with signatures from current working directory:
+    {program} -bs --sign
+3. To flash all images from subfolder foo:
+    {program} foo
+            '''.format(program=os.path.basename(__file__))))
+
+    parser.add_argument('-b', action='store_true', default=False,
+            help='to flash boot partition')
+    parser.add_argument('-r', action='store_true', default=False,
+            help='to flash recovery partition')
+    parser.add_argument('-s', action='store_true', default=False,
+            help='to flash system partition')
+    parser.add_argument('-u', action='store_true', default=False,
+            help='to flash userdata partition')
+    parser.add_argument('--sign', action='store_true', default=False,
+            help='flash image(s) with its signature(s)')
+
+    parser.add_argument('path' , metavar='PATH', nargs='?',
+            help='image location')
+
+    args = parser.parse_args()
+    args.auto_mode = True \
+            if not any([args.b, args.r, args.s, args.u]) else False
+    return args
+
+def choose_file(path):
+    print(path)
+    paths = [f for f in os.listdir(os.path.dirname(path))
+            if os.path.isfile(os.path.join(os.path.dirname(path), f))
+            and f.startswith(os.path.splitext(os.path.basename(path))[0] + '.')
+            and not f.endswith('.sig')]
+
+    if len(paths) == 0: return None
+    if len(paths) == 1: return os.path.join(os.path.dirname(path), paths[0])
+
+    for i, v in enumerate(paths):
+        print(str(i + 1) + '. ' + v)
+    while True:
+        choice = input('Please choose a file. \'*\' for bypassing. [?] ')
+        if choice == '*': return None
+        try:
+            choice = int(choice)
+            filename = paths[choice-1]
+            break
+        except (IndexError, ValueError):
+            print('The input number was unacceptable. Try again please.')
+            continue
+    return os.path.join(os.path.dirname(path), filename)
+
+def flash(**kwarg):
+    '''
+    target_dir: the full path of the directory which contains the target image.
+    partition: partition name
+    signature: whether should sign signature or not
+    '''
+    print('=== ' + '\x1b[1;32m' + kwarg['partition'].upper()
+            + '\x1b[0m' + ' ===')
+
+    path = kwarg['target_dir'] \
+            if kwarg['target_dir'] is not None else os.getcwd()
+    path = os.path.join(path, kwarg['partition'] + '.img')
+
+    path = choose_file(path)
+    if path is None:
+        print('\x1b[1;31m'
+                + 'WARNING: No image for partition '
+                + '\x1b[1;32m' + kwarg['partition'] + '\x1b[0m')
+        return False
+
+    global spawned_job
+
+    if kwarg['signature']:
+        signature = os.path.splitext(path)[0] + '.sig'
+        spawned_job = subprocess.Popen(['digest', path, signature])
+        spawned_job.wait()
+        spawned_job = subprocess.Popen(['fastboot', 'signature', signature])
+        spawned_job.wait()
+
+    spawned_job = subprocess.Popen(
+            ['fastboot', 'flash', kwarg['partition'], path])
+    spawned_job.wait()
+
+    return not spawned_job.returncode
+
+def has_command(cmd):
+    try:
+        subprocess.check_call(['which', cmd],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError:
+        print('ERROR: Cannot locate command \'{cmd}\'.'.format(cmd=cmd),
+                file=sys.stderr)
+        return False
+    return True
+
+def init(args):
+    if not has_command('fastboot'): return False
+    if args.sign and not has_command('digest'): return False
+    return True
+
+def main():
+    signal.signal(signal.SIGINT, signal_handler)
+
+    args = get_arguments()
+
+    if not init(args): exit(1)
+
+    results = list()
+
+    if args.auto_mode or args.b:
+        results.append(flash(target_dir=args.path, partition=PARTITION_BOOT,
+                signature=args.sign))
+    if args.auto_mode or args.r:
+        results.append(flash(target_dir=args.path, partition=PARTITION_RECOVERY,
+                signature=args.sign))
+    if args.auto_mode or args.s:
+        results.append(flash(target_dir=args.path, partition=PARTITION_SYSTEM,
+                signature=args.sign))
+    if args.auto_mode or args.u:
+        results.append(flash(target_dir=args.path, partition=PARTITION_USERDATA,
+                signature=args.sign))
+
+    if not any(results): exit(1)
+
+if __name__ == '__main__':
+    main()
