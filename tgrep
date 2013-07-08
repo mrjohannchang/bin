@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+find . -type d -name "\.git" -prune -o -type d -name "\.svn" -prune \
+    -o -type d -name "\.repo" -prune -o -type f -name "cscope\.*" \
+    -o -type f -print0 | xargs --null grep --color --with-filename \
+    --line-number --binary-files=without-match "$@"
