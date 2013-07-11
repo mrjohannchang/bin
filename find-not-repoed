@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
+import locale
+import os
+import re
+import shlex
+import subprocess
+import sys
+
+
+REPO_DIR = '.repo'
+
+def _find_repo():
+    """Look for a repo installation, starting at the current directory.
+    """
+    curdir = os.getcwd()
+    repo = None
+
+    olddir = None
+    while curdir != '/' \
+            and curdir != olddir \
+            and not repo:
+        repo = os.path.join(curdir, REPO_DIR, os.path.join('repo', 'main.py'))
+        if not os.path.isfile(repo):
+            repo = None
+            olddir = curdir
+            curdir = os.path.dirname(curdir)
+    return (repo, os.path.join(curdir, REPO_DIR), curdir)
+
+def _execute(cmd):
+    args = shlex.split(cmd)
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return p.stdout.read()
+
+def _get_repo_projects():
+    projects = _execute('repo list').decode(locale.getdefaultlocale()[1]).split('\n')
+    i = 0
+    while i < len(projects):
+        if not projects[i]:
+            projects.pop(i)
+            continue
+        try:
+            projects[i] = projects[i][:int(projects[i].index(' : '))] + '/'
+        except ValueError:
+            pass
+        i += 1
+    return projects
+
+def _find_alone_files(dirs):
+    cmd = 'find . -type d -name ".repo" -prune -o -type d -name ".git" -prune'
+
+    for d in dirs:
+        cmd += ' -o -type d -path "./{}" -prune'.format(d)
+
+    for d in _get_repo_projects():
+        cmd += ' -o -type d -path "./{}" -prune'.format(d[:len(d)-1])
+
+    cmd += ' -o -type f -print -o -type l -print'
+
+    files = _execute(cmd).decode(locale.getdefaultlocale()[1]).split('\n')
+    i = 0
+    while i < len(files):
+        if not files[i]:
+            files.pop(i)
+            continue
+        files[i] = files[i][2:]
+        i += 1
+    return files
+
+def _find_every_directory():
+    dirs = _execute('find . -type d -name ".repo" -prune -o -type d -name \
+            ".git" -prune -o -type d -print').decode(
+                    locale.getdefaultlocale()[1]).split('\n')
+    i = 0
+    while i < len(dirs):
+        if dirs[i] == '.':
+            dirs.pop(i)
+            continue
+        if not dirs[i]:
+            dirs.pop(i)
+            continue
+        dirs[i] = dirs[i][2:] + '/'
+        i += 1
+    return dirs
+
+def _find_alone_dirs():
+    dirs = []
+    alone_dirs = []
+    projects = _get_repo_projects()
+
+    for d in _find_every_directory():
+        if not any(1 for p in projects if p in d or d in p):
+            dirs.append(d)
+
+    dirs.sort()
+
+    i = 0
+    while i < len(dirs):
+        alone_dirs.append(dirs[i][:len(dirs[i])-1])
+        j = i + 1
+        while j <= len(dirs):
+            if j == len(dirs) or dirs[i] not in dirs[j]:
+                i = j
+                break
+            j += 1
+
+    return alone_dirs
+
+def main():
+    path_repo, path_repo_dir, path_repo_root = _find_repo()
+
+    if not path_repo:
+        print('We are not in a repo', file=sys.stdout)
+        exit(1)
+
+    os.chdir(path_repo_root)
+
+    not_list_dirs = _find_alone_dirs()
+    not_list_files = _find_alone_files(not_list_dirs)
+
+    if not not_list_dirs and not not_list_files:
+        return
+
+    if not_list_dirs:
+        print('== Directories ==')
+        for d in not_list_dirs:
+            print(d)
+    print()
+    if not_list_files:
+        print('== Files ==')
+        for f in not_list_files:
+            print(f)
+
+if __name__ == '__main__':
+    main()
