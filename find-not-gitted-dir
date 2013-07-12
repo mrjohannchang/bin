@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import locale
+import shlex
+import subprocess
+
+
+def _execute(cmd):
+    p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+    return p.stdout.read().decode(locale.getdefaultlocale()[1])
+
+def get_git_dirs():
+    dirs = list()
+    for d in _execute('find . -type d -name ".git"').split('\n'):
+        if len(d) < 3:
+            continue
+        dirs.append(d[2:len(d)-5])
+    return dirs
+
+def get_all_dirs():
+    dirs = list()
+    for d in _execute('find . -type d -name ".repo" -prune -o -type d -name \
+            ".git" -prune -o -type d -print').split('\n'):
+        if len(d) < 3:
+            continue
+        dirs.append(d[2:])
+    return dirs
+
+def main():
+    no_git_dirs = list()
+    shrinked_no_git_dirs = list()
+    git_dirs = get_git_dirs()
+
+    for d in get_all_dirs():
+        if not any(True for dd in git_dirs if d in dd or dd in d):
+            no_git_dirs.append(d)
+
+    no_git_dirs.sort()
+
+    i = 0
+    while i < len(no_git_dirs):
+        shrinked_no_git_dirs.append(no_git_dirs[i])
+
+        j = i + 1
+
+        while j <= len(no_git_dirs):
+            if j == len(no_git_dirs) or no_git_dirs[i] not in no_git_dirs[j]:
+                i = j
+                break
+            j += 1
+
+    print('\n'.join(shrinked_no_git_dirs))
+
+if __name__ == '__main__':
+    main()
