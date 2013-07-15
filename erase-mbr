@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+usage() {
+cat << EOT
+usage:
+  `basename "$0"` <device>
+EOT
+    exit 1
+}
+
+if [ $# != 1 ] ; then
+    usage
+fi
+
+sudo su -c "dd if=/dev/zero of=\"$1\" bs=512 count=1 && partprobe"
