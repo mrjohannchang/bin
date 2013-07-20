@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+find -type d -name .git | while read line; do
+    repo_path="${line%*/.git}"
+    repo_path="${repo_path#./}"
+    pushd "$repo_path"
+    echo "export REPO_PATH=\"$repo_path\" ; $@" | bash
+    popd
+done
