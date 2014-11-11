@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+while [ "$1" ]; do
+    find . -name "*${1}*"
+    shift
+done | sort -u
