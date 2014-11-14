@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
 while [ "$1" ]; do
-    find . -name "*${1}*"
+    find . -iname "*${1}*"
     shift
 done | sort -u
