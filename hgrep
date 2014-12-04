@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+cmd="`basename "$0"`"
+exdirs="-name .repo -o -name .hg -o -name .git -o -name .svn"
+exfiles="-name 'cscope.*'"
+
+cppfiles="-name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h'"
+javafiles="-name '*.java'"
+xmlfiles="-name '*.html' -o -name '*.xml'"
+
+fts="-name '*'"
+
+if [ $cmd = "cppgrep" ]; then
+    fts="$cppfiles"
+elif [ $cmd = "javagrep" ]; then
+    fts="$javafiles"
+elif [ $cmd = "xmlgrep" ]; then
+    fts="$xmlfiles"
+elif [ $cmd = "srcgrep" ]; then
+    fts="$cppfiles -o $javafiles -o $xmlfiles"
+fi
+
+eval find . -type d \\\( $exdirs \\\) -prune -o -type f \\\( $exfiles \\\) \
+    -o -type f \\\( $fts \\\) -print0 \
+    | xargs --null grep --color --with-filename --line-number \
+    --binary-files=without-match "$@"
