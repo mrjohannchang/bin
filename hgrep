@@ -5,19 +5,41 @@ exdirs="-name .repo -o -name .hg -o -name .git -o -name .svn"
 exfiles="-name 'cscope.*'"
 
 cppfiles="-name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h'"
+gofiles="-name '*.go'"
 javafiles="-name '*.java'"
+jsfiles="-name '*.js'"
+plfiles="-name '*.pl'"
+pyfiles="-name '*.py'"
+rbfiles="-name '*.rb'"
 xmlfiles="-name '*.html' -o -name '*.xml'"
 
 fts="-name '*'"
 
 if [ $cmd = "cppgrep" ]; then
     fts="$cppfiles"
+elif [ $cmd = "gogrep" ]; then
+    fts="$gofiles"
 elif [ $cmd = "javagrep" ]; then
     fts="$javafiles"
+elif [ $cmd = "jsgrep" ]; then
+    fts="$jsfiles"
+elif [ $cmd = "plgrep" ]; then
+    fts="$plfiles"
+elif [ $cmd = "pygrep" ]; then
+    fts="$pyfiles"
+elif [ $cmd = "rbgrep" ]; then
+    fts="$rbfiles"
 elif [ $cmd = "xmlgrep" ]; then
     fts="$xmlfiles"
 elif [ $cmd = "srcgrep" ]; then
-    fts="$cppfiles -o $javafiles -o $xmlfiles"
+    fts="$cppfiles"
+    fts="${fts} -o $gofiles"
+    fts="${fts} -o $javafiles"
+    fts="${fts} -o $jsfiles"
+    fts="${fts} -o $plfiles"
+    fts="${fts} -o $pyfiles"
+    fts="${fts} -o $rbfiles"
+    fts="${fts} -o $xmlfiles"
 fi
 
 eval find . -type d \\\( $exdirs \\\) -prune -o -type f \\\( $exfiles \\\) \
