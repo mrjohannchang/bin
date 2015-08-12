@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import argparse
@@ -10,21 +11,25 @@ import smtplib
 import socket
 import sys
 
+
 __author__ = 'Chang, Yu-Heng'
+
 
 def get_arguments():
     parser = argparse.ArgumentParser(description='Quickly send an email. \
             Mail contents would be read from standard input and it could be empty.')
-    parser.add_argument('-s', '--sender', metavar='SENDER',
-            default='anonymous@anonymous.org', help="sender's email")
-    parser.add_argument('-r', '--recipients', metavar='RECIPIENTS', nargs='+',
-            required=True, help="recipients' email")
-    parser.add_argument('-j', '--subject', metavar='SUBJECT', required=True,
-            help='mail subject')
-    parser.add_argument('--smtp', metavar='MAIL_SERVER',
-            default='msa.hinet.net', help='server address for SMTP service')
+    parser.add_argument('-s', '--sender', default='anonymous@anonymous.org', help="sender's email")
+    parser.add_argument('-r', '--recipients', nargs='+', required=True, help="recipients' email")
+    parser.add_argument('-j', '--subject', required=True, help='mail subject')
+    parser.add_argument('--smtp-host', metavar='MAIL_SERVER', default='msa.hinet.net',
+            help='server address for SMTP service')
+    parser.add_argument('--port', help='port on the smtp server')
+    parser.add_argument('--ssl', action='store_true', help='using SSL or not')
+    parser.add_argument('--username', help='username')
+    parser.add_argument('--password', default='', help='password')
     args = parser.parse_args()
     return args
+
 
 def sendmail(args):
     msg = MIMEMultipart()
@@ -34,17 +39,30 @@ def sendmail(args):
     msg['from'] = args.sender
     msg['subject'] = args.subject
 
+    sender = args.sender
+    recipients = args.recipients
+    content = msg.as_string()
+    host = args.smtp_host
+    port = args.port if args.port else 465 if args.ssl else 25
+    username = args.username
+    password = args.password
+    SMTP = smtplib.SMTP_SSL if args.ssl else smtplib.SMTP
+
     try:
-        s = smtplib.SMTP()
-        s.connect(args.smtp)
-        s.sendmail(args.sender, args.recipients, msg.as_string())
-        s.quit()
+        smtp = SMTP(host, port)
+        if args.username is not None:
+            smtp.ehlo()
+            smtp.login(username, password)
+        smtp.sendmail(sender, recipients, content)
+        smtp.quit()
     except Exception as e:
         print(e, file=sys.stderr)
-        exit(1)
+        sys.exit(1)
+
 
 def main():
     sendmail(get_arguments())
+
 
 if __name__ == '__main__':
     main()
