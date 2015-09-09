@@ -44,5 +44,5 @@ fi
 
 eval find . -type d \\\( $exdirs \\\) -prune -o -type f \\\( $exfiles \\\) \
     -o -type f \\\( $fts \\\) -print0 \
-    | xargs --null grep --color --with-filename --line-number \
+    | xargs -0 grep --color --with-filename --line-number \
     --binary-files=without-match "$@"

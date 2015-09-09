@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
 while [ "$1" ]; do
-    find -iwholename "*${1//./?}*"
+    find . -iwholename "*${1//./?}*"
     shift
 done | sort -u
