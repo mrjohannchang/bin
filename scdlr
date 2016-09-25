@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+# TODO: Add support for Linux. Now it only supports OS X.
+
+dest_dir="$1"
+
+if [ -z "$dest_dir" ]; then
+  dest_dir="."
+fi
+
+BaseUrl="http://sc.studioclassroom.com/index3.php"
+Referer="http://www.studioclassroom.com/sc/Sc-rD.php"
+UserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 \
+  (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"
+Host=sc.studioclassroom.com
+reasonable_size_kb=7000
+
+dl_steam() {
+  date="$1"
+  req_url="${BaseUrl}?day=${date}"
+
+  steam_url=$(\
+    curl --referer "$Referer" --user-agent "$UserAgent" --silent --head \
+    "$req_url" | sed -n '/^Location:/p' | sed 's/^Location:\ //' \
+    | tr -d '\n' | tr -d '\r')
+
+  [ -z "$steam_url" ] || [ "${#steam_url}" -lt 31 ] && return
+
+  dest_file="${dest_dir}/${date}.$(basename "$steam_url" | sed 's/.*\.//g')"
+
+  [ -f "$dest_file" ] && return
+
+  tmpfile=$(mktemp)
+
+  for i in $(seq 3); do
+    [ -f "$tmpfile" ] && \
+      [ "$(du -k "$tmpfile" | cut -f 1)" -gt "$reasonable_size_kb" ] && break
+    rm -f "$tmpfile"
+    mplayer -dumpstream -dumpfile "$tmpfile" "$steam_url"
+  done
+
+  if [ -z "$(du -k "$tmpfile" | cut -f 1)" ] \
+      || [ ! "$(du -k "$tmpfile" | cut -f 1)" -gt "$reasonable_size_kb" ]; then
+    rm -f "$tmpfile"
+  fi
+
+  if [ -f "$tmpfile" ]; then
+    mv "$tmpfile" "$dest_file"
+  fi
+}
+
+for d in "" -v+1d -v+2d -v-1d -v-2d; do
+  if [ -n "$d" ]; then
+    dl_steam "$(TZ=Asia/Taipei date "$d" "+%Y-%m-%d")"
+  else
+    dl_steam "$(TZ=Asia/Taipei date "+%Y-%m-%d")"
+  fi
+done
