@@ -2,17 +2,36 @@
 
 # TODO: Add support for Linux. Now it only supports OS X.
 
+cmd=$(basename "$0")
 dest_dir="$1"
 
 if [ -z "$dest_dir" ]; then
   dest_dir="."
 fi
 
-BaseUrl="http://sc.studioclassroom.com/index3.php"
-Referer="http://www.studioclassroom.com/sc/Sc-rD.php"
+case "$cmd" in
+  addlr)
+    BaseUrl="http://ad.studioclassroom.com/radio_BroadBand.php"
+    Referer="http://ad.studioclassroom.com/Ad-RAd.php"
+    Host=ad.studioclassroom.com
+    ;;
+  ltdlr)
+    BaseUrl="http://lt.studioclassroom.com/RaDio_B.php"
+    Referer="http://lt.studioclassroom.com/LT-RaDio.php"
+    Host=lt.studioclassroom.com
+    ;;
+  scdlr)
+    BaseUrl="http://sc.studioclassroom.com/index3.php"
+    Referer="http://sc.studioclassroom.com/Sc-rD.php"
+    Host=sc.studioclassroom.com
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+
 UserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 \
   (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"
-Host=sc.studioclassroom.com
 reasonable_size_kb=7000
 
 dl_steam() {
