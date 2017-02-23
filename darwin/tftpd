@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+
+me=$(basename "${BASH_SOURCE[0]}")
+option="$1"
+
+usage() {
+  cat << EOF
+$me <start|stop|status>
+EOF
+}
+
+case "$option" in
+  -h | --help | help)
+    usage
+    exit
+    ;;
+  start)
+    sudo launchctl load -F /System/Library/LaunchDaemons/tftp.plist
+    echo "$me started"
+    ;;
+  stop)
+    sudo launchctl unload -F /System/Library/LaunchDaemons/tftp.plist
+    echo "$me stopped"
+    ;;
+  status)
+    if sudo launchctl list com.apple.tftpd > /dev/null 2>&1; then
+      echo "$me started"
+    else
+      echo "$me stopped"
+    fi
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
