@@ -53,7 +53,7 @@ example:
     parser.add_argument('--sign', action='store_true', default=False,
             help='flash image(s) with its signature(s)')
 
-    parser.add_argument('path' , metavar='PATH', nargs='?',
+    parser.add_argument('path', metavar='PATH', nargs='?',
             help='image location')
 
     args = parser.parse_args()
