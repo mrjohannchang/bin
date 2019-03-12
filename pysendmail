@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import argparse
+import email.encoders
+import email.mime.base
+import email.mime.multipart
+import email.mime.text
 import os
 import select
 import smtplib
@@ -18,9 +19,10 @@ __author__ = 'Chang, Yu-Heng'
 def get_arguments():
     parser = argparse.ArgumentParser(description='Quickly send an email. \
             Mail contents would be read from standard input and it could be empty.')
-    parser.add_argument('-s', '--sender', default='anonymous@anonymous.org', help="sender's email")
+    parser.add_argument('-f', '--from', default='anonymous@anonymous.org', dest='from_addr', help='address the recipients see where the mail is from')
     parser.add_argument('-r', '--recipients', nargs='+', required=True, help="recipients' email")
     parser.add_argument('-j', '--subject', required=True, help='mail subject')
+    parser.add_argument('-a', '--attachments', nargs='+', help='files to attach')
     parser.add_argument('--smtp-host', metavar='MAIL_SERVER', default='msa.hinet.net',
             help='server address for SMTP service')
     parser.add_argument('--port', help='port on the smtp server')
@@ -32,14 +34,23 @@ def get_arguments():
 
 
 def sendmail(args):
-    msg = MIMEMultipart()
+    msg = email.mime.multipart.MIMEMultipart()
     if select.select([sys.stdin], [], [], 0)[0]:
-        msg.attach(MIMEText(sys.stdin.read()))
+        msg.attach(email.mime.text.MIMEText(sys.stdin.read()))
     msg['To'] = ','.join(args.recipients)
-    msg['from'] = args.sender
+    msg['from'] = args.from_addr
     msg['subject'] = args.subject
 
-    sender = args.sender
+    if args.attachments:
+        for path in args.attachments:
+            part = email.mime.base.MIMEBase('application', 'octet-stream')
+            with open(path, 'rb') as f:
+                part.set_payload(f.read())
+            email.encoders.encode_base64(part)
+            part.add_header('Content-Disposition', 'attachment; filename="{}"'.format(os.path.basename(path)))
+            msg.attach(part)
+
+    from_addr = args.from_addr
     recipients = args.recipients
     content = msg.as_string()
     host = args.smtp_host
@@ -53,15 +64,15 @@ def sendmail(args):
         if args.username is not None:
             smtp.ehlo()
             smtp.login(username, password)
-        smtp.sendmail(sender, recipients, content)
+        smtp.sendmail(from_addr, recipients, content)
         smtp.quit()
     except Exception as e:
         print(e, file=sys.stderr)
-        sys.exit(1)
+        return os.EX_SOFTWARE
 
 
 def main():
-    sendmail(get_arguments())
+    sys.exit(sendmail(get_arguments()))
 
 
 if __name__ == '__main__':
