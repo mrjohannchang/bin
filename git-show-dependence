@@ -167,7 +167,7 @@ def is_ancestor(start_point, end_point):
     return not p.wait()
 
 def is_clean():
-    return len(run_cmd('git status').split('\n')) == 3
+    return not run_cmd('git status --porcelain')
 
 def init(args):
     if not is_clean():
