@@ -20,7 +20,7 @@ hard_reset_all() {
 
     if ! git rev-parse --verify --quiet "$remote/$upstream" 1>&- 2>&-; then
       ret=1
-      echo "$branch"
+      echo "Branch $branch"
       echo "  skipped (upstream is deleted)"
       continue
     fi
@@ -29,7 +29,7 @@ hard_reset_all() {
       continue
     fi
 
-    echo "$branch"
+    echo "Branch $branch"
 
     echo "  $(git log --oneline -1 $branch)"
     if [ "refs/heads/$branch" = "$curref" ]; then
