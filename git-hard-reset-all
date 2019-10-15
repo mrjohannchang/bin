@@ -1,8 +1,13 @@
 #!/bin/sh
 
+excode=0
 curref=$(git symbolic-ref HEAD 2>&-)
 
-git fetch --all
+if ! git fetch --all; then
+  echo "error: failed to fetch remotes"
+  excode=$?
+  exit $excode
+fi
 
 git config --local --get-regex '^branch.*remote$' | while read -r line; do
   branch=$(echo "$line" | awk '{print $1}' | cut -c 8- | rev | cut -c 8- | rev)
@@ -11,13 +16,23 @@ git config --local --get-regex '^branch.*remote$' | while read -r line; do
 
   echo "$branch"
 
-  if [ -n "$(git log --oneline -1 "$branch...$remote/$upstream")" ]; then
-    echo "  $(git log --oneline -1 $branch)"
-    if [ "refs/heads/$branch" = "$curref" ]; then
-      git reset --hard "$remote/$upstream" 1>&- 2>&-
-    else
-      git update-ref "refs/heads/$branch" "$remote/$upstream" 1>&- 2>&-
-    fi
-    echo "  -> $(git log --oneline -1 $remote/$upstream)"
+  if ! git rev-parse --verify --quiet "$remote/$upstream" 1>&- 2>&-; then
+    excode=1
+    echo "  skipped (upstream is deleted)"
+    continue
   fi
+
+  if [ -z "$(git log --oneline -1 "$branch...$remote/$upstream")" ]; then
+    continue
+  fi
+
+  echo "  $(git log --oneline -1 $branch)"
+  if [ "refs/heads/$branch" = "$curref" ]; then
+    git reset --hard "$remote/$upstream" 1>&- 2>&-
+  else
+    git update-ref "refs/heads/$branch" "$remote/$upstream" 1>&- 2>&-
+  fi
+  echo "  -> $(git log --oneline -1 $remote/$upstream)"
 done
+
+exit $excode
