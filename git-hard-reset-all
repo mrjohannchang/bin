@@ -4,7 +4,6 @@ excode=0
 curref=$(git symbolic-ref HEAD 2>&-)
 
 if ! git fetch --all; then
-  echo "error: failed to fetch remotes"
   excode=$?
   exit $excode
 fi
