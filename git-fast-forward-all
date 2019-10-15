@@ -1,43 +1,60 @@
 #!/bin/sh
 
-excode=0
 curref=$(git symbolic-ref HEAD 2>&-)
 
-git fetch --all
+fetch_all() {
+  git fetch --all
+  ret=$?
+  [ "$ret" -eq 0 ] || {
+    return "$ret"
+  }
+}
+
+fast_forward_all() {
+  ret=0
+
+  git config --local --get-regex '^branch.*remote$' | while read -r line; do
+    branch=$(echo "$line" | awk '{print $1}' | cut -c 8- | rev | cut -c 8- | rev)
+    remote=$(echo "$line" | awk '{print $2}')
+    upstream=$(git config --local --get "branch.$branch.merge" | cut -c 12-)
+
+    echo "$branch"
+
+    if ! git rev-parse --verify --quiet "$remote/$upstream" 1>&- 2>&-; then
+      ret=1
+      echo "  skipped (upstream is deleted)"
+      continue
+    fi
+
+    if [ -z "$(git log --oneline -1 "$branch..$remote/$upstream")" ]; then
+      continue
+    fi
+
+    if [ -n "$(git log --oneline -1 "$remote/$upstream..$branch")" ]; then
+      echo "  skipped (diverged)"
+      ret=1
+      continue
+    fi
+
+    if [ "refs/heads/$branch" = "$curref" ]; then
+      git reset --hard "$remote/$upstream" 1>&- 2>&-
+    else
+      git update-ref "refs/heads/$branch" "$remote/$upstream" 1>&- 2>&-
+    fi
+    echo "  fast-forwarded"
+  done
+
+  return "$ret"
+}
+
+fetch_all
 excode=$?
-if [ "$excode" -ne 0 ]; then
-  exit $excode
-fi
+[ "$excode" -eq 0 ] || {
+  exit "$excode"
+}
 
-git config --local --get-regex '^branch.*remote$' | while read -r line; do
-  branch=$(echo "$line" | awk '{print $1}' | cut -c 8- | rev | cut -c 8- | rev)
-  remote=$(echo "$line" | awk '{print $2}')
-  upstream=$(git config --local --get "branch.$branch.merge" | cut -c 12-)
-
-  echo "$branch"
-
-  if ! git rev-parse --verify --quiet "$remote/$upstream" 1>&- 2>&-; then
-    excode=1
-    echo "  skipped (upstream is deleted)"
-    continue
-  fi
-
-  if [ -z "$(git log --oneline -1 "$branch..$remote/$upstream")" ]; then
-    continue
-  fi
-
-  if [ -n "$(git log --oneline -1 "$remote/$upstream..$branch")" ]; then
-    echo "  skipped (diverged)"
-    excode=1
-    continue
-  fi
-
-  if [ "refs/heads/$branch" = "$curref" ]; then
-    git reset --hard "$remote/$upstream" 1>&- 2>&-
-  else
-    git update-ref "refs/heads/$branch" "$remote/$upstream" 1>&- 2>&-
-  fi
-  echo "  fast-forwarded"
-done
-
-exit $excode
+fast_forward_all
+excode=$?
+[ "$excode" -eq 0 ] || {
+  exit "$excode"
+}
