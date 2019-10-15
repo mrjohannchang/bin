@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 curref=$(git symbolic-ref HEAD 2>&-)
 
@@ -13,7 +13,7 @@ fetch_all() {
 fast_forward_all() {
   ret=0
 
-  git config --local --get-regex '^branch.*remote$' | while read -r line; do
+  while read -r line; do
     branch=$(echo "$line" | awk '{print $1}' | cut -c 8- | rev | cut -c 8- | rev)
     remote=$(echo "$line" | awk '{print $2}')
     upstream=$(git config --local --get "branch.$branch.merge" | cut -c 12-)
@@ -42,7 +42,7 @@ fast_forward_all() {
       git update-ref "refs/heads/$branch" "$remote/$upstream" 1>&- 2>&-
     fi
     echo "  fast-forwarded"
-  done
+  done < <(git config --local --get-regex '^branch.*remote$')
 
   return "$ret"
 }
