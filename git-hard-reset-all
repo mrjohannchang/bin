@@ -3,8 +3,9 @@
 excode=0
 curref=$(git symbolic-ref HEAD 2>&-)
 
-if ! git fetch --all; then
-  excode=$?
+git fetch --all
+excode=$?
+if [ "$excode" -ne 0 ]; then
   exit $excode
 fi
 
