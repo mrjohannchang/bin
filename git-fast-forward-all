@@ -2,6 +2,8 @@
 
 curref=$(git symbolic-ref HEAD 2>&-)
 
+git fetch --all
+
 git config --local --get-regex '^branch.*remote$' | while read -r line; do
   branch=$(echo "$line" | awk '{print $1}' | cut -c 8- | rev | cut -c 8- | rev)
   remote=$(echo "$line" | awk '{print $2}')
