@@ -7,7 +7,6 @@ import email.mime.base
 import email.mime.multipart
 import email.mime.text
 import os
-import select
 import smtplib
 import socket
 import sys
@@ -35,7 +34,7 @@ def get_arguments():
 
 def sendmail(args):
     msg = email.mime.multipart.MIMEMultipart()
-    if select.select([sys.stdin], [], [], 0)[0]:
+    if not sys.stdin.isatty():
         msg.attach(email.mime.text.MIMEText(sys.stdin.read()))
     msg['To'] = ','.join(args.recipients)
     msg['from'] = args.from_addr
