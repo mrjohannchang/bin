@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+WORKING_PATH="`pwd`"
+while [ "`pwd`" != "$HOME" ]; do
+    if [ -d ".git" ]; then
+        break;
+    fi
+    cd ..
+done
+git rebase --abort > /dev/null 2>&1
+git am --abort > /dev/null 2>&1
+git reset --hard
+git clean -xdf
+cd $WORKING_PATH
+unset WORKING_PATH
